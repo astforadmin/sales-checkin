@@ -171,7 +171,6 @@ body {
 <div id="app">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="user-avatar" id="user-av">S</div>
       <div class="user-info">
         <p id="user-name">-</p>
         <span class="badge-role" id="user-role">SALES</span>
@@ -180,10 +179,10 @@ body {
     <button class="logout-btn" onclick="doLogout()">ออก</button>
   </div>
   <div class="nav-tabs" id="nav-tabs">
-    <div class="tab active" onclick="showTab('checkin',this)">เช็คอิน</div>
-    <div class="tab" onclick="showTab('history',this)">ประวัติ</div>
-    <div class="tab" onclick="showTab('stats',this)">สถิติ</div>
-    <div class="tab" onclick="showTab('export',this)">ส่งออก</div>
+    <div class="tab active" onclick="showTab('checkin',this)" id="tab-checkin">เช็คอิน</div>
+    <div class="tab" onclick="showTab('history',this)" id="tab-history">ประวัติ</div>
+    <div class="tab" onclick="showTab('stats',this)" id="tab-stats">สถิติ</div>
+    <div class="tab" onclick="showTab('export',this)" id="tab-export">ส่งออก</div>
   </div>
 
   <div class="page active" id="page-checkin">
@@ -346,15 +345,29 @@ function showApp() {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('user-av').textContent = userData.name[0];
   document.getElementById('user-name').textContent = userData.name;
   document.getElementById('user-role').textContent = userData.role.toUpperCase();
+
   if (userData.role==='manager'||userData.role==='admin') {
+    // เพิ่ม tab ทีมทั้งหมด
     if (!document.getElementById('tab-all')) {
       const t = document.createElement('div');
       t.className='tab'; t.id='tab-all'; t.textContent='ทีมทั้งหมด';
       t.onclick=function(){showTab('all',this);};
-      document.getElementById('nav-tabs').appendChild(t);
+      document.getElementById('nav-tabs').insertBefore(t, document.getElementById('tab-checkin'));
+    }
+    // manager เริ่มที่หน้าทีมทั้งหมดก่อน
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('tab-all').classList.add('active');
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    // สร้างหน้า all ถ้ายังไม่มี
+    if (!document.getElementById('page-all')) {
+      const p = document.createElement('div');
+      p.className='page active'; p.id='page-all';
+      p.innerHTML='<div class="empty"><span>📋</span>กำลังโหลด...</div>';
+      document.getElementById('app').appendChild(p);
+    } else {
+      document.getElementById('page-all').classList.add('active');
     }
   }
   startClock();
@@ -489,7 +502,12 @@ function closeModal(){document.getElementById('modal').classList.remove('show');
 async function loadCheckins() {
   try {
     const res=await jsonp({action:'getCheckins',token});
-    if(res.ok){allCheckins=res.data;renderHistory();renderStats();}
+    if(res.ok){
+      allCheckins=res.data;
+      renderHistory();
+      renderStats();
+      if(userData.role==='manager'||userData.role==='admin') renderAllTeam();
+    }
   } catch(e){}
 }
 
@@ -588,6 +606,40 @@ function showTab(tab,el) {
   if(el) el.classList.add('active');
   if(tab==='history') renderHistory();
   if(tab==='stats') renderStats();
+  if(tab==='all') renderAllTeam();
+}
+
+function renderAllTeam() {
+  let page = document.getElementById('page-all');
+  if (!page) {
+    page = document.createElement('div');
+    page.className='page active'; page.id='page-all';
+    document.getElementById('app').appendChild(page);
+  }
+  if (!allCheckins.length) {
+    page.innerHTML='<div class="empty"><span>📋</span>ยังไม่มีข้อมูลเช็คอิน</div>';
+    return;
+  }
+  const cls={'ปิดการขายได้':'ob-success','รอติดตาม':'ob-follow','ไม่สนใจ':'ob-none','นัดครั้งต่อไป':'ob-appt'};
+  page.innerHTML = allCheckins.map(c=>`
+    <div class="history-item" style="margin-bottom:0.75rem">
+      <div class="hi-header">
+        <div>
+          <span class="hi-name">${c.customerName||'-'}</span>
+          <span class="manager-label">👤 ${c.userName}</span>
+        </div>
+        <div class="hi-time">${c.time} น.</div>
+      </div>
+      <div class="hi-meta">
+        📅 ${c.date}
+        ${c.mapsUrl?`· <a href="${c.mapsUrl}" target="_blank" style="color:#00aa77;font-weight:700">📍 ดูแผนที่</a>`:''}
+        ${c.customerPhone?`<br>📞 ${c.customerPhone}`:''}
+        ${c.customerCompany?`· 🏢 ${c.customerCompany}`:''}
+      </div>
+      <div class="hi-purpose">${c.purpose||'-'}</div>
+      ${c.note?`<div class="hi-note">💬 ${c.note}</div>`:''}
+      <div class="outcome-badge ${cls[c.outcome]||'ob-none'}">${c.outcome||'-'}</div>
+    </div>`).join('');
 }
 
 function startClock() {
