@@ -633,6 +633,31 @@ function showTab(tab,el) {
   if(tab==='all') renderAllTeam();
 }
 
+function formatDate(val) {
+  if (!val) return '-';
+  // ถ้าเป็น ISO string หรือ Date object ที่แปลกๆ ให้แปลงใหม่
+  const s = val.toString();
+  if (s.includes('T') || s.includes('1899') || s.includes('GMT')) {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return s;
+    return d.toLocaleDateString('th-TH', {day:'2-digit', month:'2-digit', year:'numeric'});
+  }
+  return s;
+}
+
+function formatTime(val) {
+  if (!val) return '-';
+  const s = val.toString();
+  if (s.includes('T') || s.includes('1899') || s.includes('GMT')) {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return s;
+    return d.toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+  }
+  return s;
+}
+
+let teamFilter = { period: 'all', sales: 'all' };
+
 function renderAllTeam() {
   let page = document.getElementById('page-all');
   if (!page) {
@@ -640,30 +665,72 @@ function renderAllTeam() {
     page.className='page active'; page.id='page-all';
     document.getElementById('app').appendChild(page);
   }
-  if (!allCheckins.length) {
-    page.innerHTML='<div class="empty"><span>📋</span>ยังไม่มีข้อมูลเช็คอิน</div>';
-    return;
-  }
+
+  // หารายชื่อเซลล์ทั้งหมด
+  const salesList = [...new Set(allCheckins.map(c=>c.userName))];
+
+  // กรองข้อมูลตาม filter
+  const now = new Date();
+  let filtered = allCheckins.filter(c => {
+    // filter ช่วงเวลา
+    if (teamFilter.period !== 'all') {
+      const d = new Date(c.timestamp || c.date);
+      if (teamFilter.period === 'today') {
+        if (c.date !== now.toLocaleDateString('en-GB').split('/').reverse().join('/') &&
+            formatDate(c.date) !== now.toLocaleDateString('th-TH')) {
+          // เช็คด้วย string date
+          const today = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+          if (c.date.toString() !== today) return false;
+        }
+      } else if (teamFilter.period === 'week') {
+        const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+        if (new Date(c.timestamp) < weekAgo) return false;
+      } else if (teamFilter.period === 'month') {
+        if (new Date(c.timestamp).getMonth() !== now.getMonth() ||
+            new Date(c.timestamp).getFullYear() !== now.getFullYear()) return false;
+      }
+    }
+    // filter เซลล์
+    if (teamFilter.sales !== 'all' && c.userName !== teamFilter.sales) return false;
+    return true;
+  });
+
   const cls={'ปิดการขายได้':'ob-success','รอติดตาม':'ob-follow','ไม่สนใจ':'ob-none','นัดครั้งต่อไป':'ob-appt'};
-  page.innerHTML = allCheckins.map(c=>`
+
+  page.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+      <select onchange="teamFilter.period=this.value;renderAllTeam()" style="flex:1;padding:10px;border:1.5px solid #ddd;border-radius:10px;font-family:inherit;font-size:1rem;color:#111">
+        <option value="all" ${teamFilter.period==='all'?'selected':''}>ทุกช่วงเวลา</option>
+        <option value="today" ${teamFilter.period==='today'?'selected':''}>วันนี้</option>
+        <option value="week" ${teamFilter.period==='week'?'selected':''}>7 วันล่าสุด</option>
+        <option value="month" ${teamFilter.period==='month'?'selected':''}>เดือนนี้</option>
+      </select>
+      <select onchange="teamFilter.sales=this.value;renderAllTeam()" style="flex:1;padding:10px;border:1.5px solid #ddd;border-radius:10px;font-family:inherit;font-size:1rem;color:#111">
+        <option value="all" ${teamFilter.sales==='all'?'selected':''}>เซลล์ทั้งหมด</option>
+        ${salesList.map(s=>`<option value="${s}" ${teamFilter.sales===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div style="font-size:0.9rem;color:#888;margin-bottom:0.75rem">พบ ${filtered.length} รายการ</div>
+    ${filtered.length ? filtered.map(c=>`
     <div class="history-item" style="margin-bottom:0.75rem">
       <div class="hi-header">
         <div>
-          <span class="hi-name">${c.customerName||'-'}</span>
+          <span class="hi-name">${c.customerName||'(ยังไม่ระบุ)'}</span>
           <span class="manager-label">👤 ${c.userName}</span>
         </div>
-        <div class="hi-time">${c.time} น.</div>
+        <div class="hi-time">${formatTime(c.time)} น.</div>
       </div>
       <div class="hi-meta">
-        📅 ${c.date}
+        📅 ${formatDate(c.date)}
         ${c.mapsUrl?`· <a href="${c.mapsUrl}" target="_blank" style="color:#00aa77;font-weight:700">📍 ดูแผนที่</a>`:''}
         ${c.customerPhone?`<br>📞 ${c.customerPhone}`:''}
         ${c.customerCompany?`· 🏢 ${c.customerCompany}`:''}
       </div>
-      <div class="hi-purpose">${c.purpose||'-'}</div>
+      ${c.purpose?`<div class="hi-purpose">${c.purpose}</div>`:''}
       ${c.note?`<div class="hi-note">💬 ${c.note}</div>`:''}
-      <div class="outcome-badge ${cls[c.outcome]||'ob-none'}">${c.outcome||'-'}</div>
-    </div>`).join('');
+      <div class="outcome-badge ${cls[c.outcome]||'ob-none'}">${c.outcome||'รอกรอกข้อมูล'}</div>
+    </div>`).join('') : '<div class="empty"><span>📋</span>ไม่มีข้อมูลในช่วงที่เลือก</div>'}
+  `;
 }
 
 function startClock() {
