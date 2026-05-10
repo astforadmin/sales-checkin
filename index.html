@@ -510,7 +510,7 @@ function renderHistory() {
         <div><span class="hi-name">${c.customerName}</span>${userData.role==='manager'?`<span class="manager-label">${c.userName}</span>`:''}</div>
         <div class="hi-time">${c.time} น.</div>
       </div>
-      <div class="hi-meta">📅 ${c.date}${c.lat?` · 📍 ${c.lat}, ${c.lng}`:''}${c.customerPhone?`<br>📞 ${c.customerPhone}`:''}</div>
+      <div class="hi-meta">📅 ${c.date}${c.mapsUrl?` · <a href="${c.mapsUrl}" target="_blank" style="color:#00aa77;font-weight:700">📍 ดูแผนที่</a>`:''}${c.customerPhone?`<br>📞 ${c.customerPhone}`:''}</div>
       <div class="hi-purpose">${c.purpose}</div>
       ${c.note?`<div class="hi-note">💬 ${c.note}</div>`:''}
       <div class="outcome-badge ${cls[c.outcome]||'ob-none'}">${c.outcome}</div>
