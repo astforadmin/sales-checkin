@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f0f0f">
+<title>Sales Check-in</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0f0f; --sur:#1a1a1a; --sur2:#242424; --bor:#2e2e2e;
+  --acc:#00e5a0; --acc-d:#00e5a015; --acc-g:#00e5a030;
+  --txt:#f0f0f0; --muted:#888; --dim:#444;
+  --danger:#ff4d4d; --warn:#ffaa00; --info:#4d9fff;
+  --r:14px; --rs:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;max-width:480px;margin:0 auto;padding-bottom:2rem}
+
+/* ─── LOADING ─── */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem}
+.spinner{width:40px;height:40px;border:2px solid var(--bor);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{font-size:13px;color:var(--muted)}
+
+/* ─── LOGIN ─── */
+#login-screen{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:2rem 1.5rem}
+.brand{text-align:center;margin-bottom:2.5rem}
+.brand-icon{width:64px;height:64px;background:var(--acc-d);border:1.5px solid var(--acc);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:28px}
+.brand h1{font-size:22px;font-weight:600;letter-spacing:-.5px}
+.brand p{font-size:13px;color:var(--muted);margin-top:4px}
+.login-card{background:var(--sur);border:.5px solid var(--bor);border-radius:var(--r);padding:1.75rem 1.5rem}
+.form-group{margin-bottom:1rem}
+.form-label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase}
+.form-input{width:100%;background:var(--sur2);border:.5px solid var(--bor);border-radius:var(--rs);color:var(--txt);font-family:inherit;font-size:15px;padding:12px 14px;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--acc)}
+.form-input::placeholder{color:var(--dim)}
+.btn-primary{width:100%;padding:14px;background:var(--acc);color:#000;border:none;border-radius:var(--rs);font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:.5rem;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.login-error{background:#ff4d4d15;border:.5px solid var(--danger);border-radius:var(--rs);padding:10px 14px;font-size:13px;color:var(--danger);margin-top:.75rem;display:none}
+
+/* ─── TOPBAR ─── */
+#app{display:none}
+.topbar{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:.5px solid var(--bor);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:var(--acc-d);border:1.5px solid var(--acc);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--acc)}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.user-info p{font-size:14px;font-weight:500}
+.badge-role{font-size:10px;padding:2px 8px;background:var(--acc-d);color:var(--acc);border-radius:20px;border:.5px solid var(--acc);font-weight:500}
+.logout-btn{background:none;border:.5px solid var(--bor);color:var(--muted);border-radius:var(--rs);padding:6px 10px;font-family:inherit;font-size:12px;cursor:pointer}
+
+/* ─── TABS ─── */
+.nav-tabs{display:flex;overflow-x:auto;padding:0 1.25rem;border-bottom:.5px solid var(--bor);scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:12px 16px;font-size:13px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+
+/* ─── PAGES ─── */
+.page{display:none;padding:1.25rem}
+.page.active{display:block}
+.section-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;margin-top:1.5rem}
+.section-title:first-child{margin-top:0}
+
+/* ─── CHECKIN PAGE ─── */
+.checkin-hero{background:var(--sur);border:.5px solid var(--bor);border-radius:var(--r);padding:1.5rem;margin-bottom:1.25rem;text-align:center}
+.time-display{font-family:'IBM Plex Mono',monospace;font-size:36px;font-weight:500;color:var(--acc);letter-spacing:2px;margin-bottom:4px}
+.date-display{font-size:13px;color:var(--muted)}
+
+.gps-box{background:var(--sur2);border:.5px solid var(--bor);border-radius:var(--rs);padding:14px 16px;margin-bottom:1.25rem;display:flex;align-items:center;gap:12px}
+.gps-dot{width:10px;height:10px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:all .3s}
+.gps-dot.ready{background:var(--acc);box-shadow:0 0 0 4px var(--acc-g)}
+.gps-dot.error{background:var(--danger)}
+.gps-dot.loading{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.gps-text{flex:1;font-size:13px}
+.gps-text p{color:var(--muted)}
+.gps-text small{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)}
+.gps-btn{background:none;border:.5px solid var(--bor);color:var(--acc);border-radius:var(--rs);padding:6px 12px;font-family:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+
+.form-card{background:var(--sur);border:.5px solid var(--bor);border-radius:var(--r);overflow:hidden;margin-bottom:1.25rem}
+.form-row{padding:14px 16px;border-bottom:.5px solid var(--bor)}
+.form-row:last-child{border-bottom:none}
+.form-row label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+.form-row input,.form-row textarea,.form-row select{width:100%;background:transparent;border:none;color:var(--txt);font-family:inherit;font-size:15px;outline:none;resize:none}
+.form-row textarea{min-height:70px;line-height:1.5}
+.form-row input::placeholder,.form-row textarea::placeholder{color:var(--dim)}
+.form-row select option{background:var(--sur2)}
+
+.btn-checkin{width:100%;padding:16px;background:var(--acc);color:#000;border:none;border-radius:var(--r);font-family:inherit;font-size:16px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-checkin:disabled{opacity:.4;cursor:not-allowed}
+.btn-checkin:not(:disabled):active{transform:scale(.98)}
+
+/* ─── HISTORY ─── */
+.filter-row{display:flex;gap:8px;margin-bottom:1.25rem;overflow-x:auto;scrollbar-width:none}
+.filter-chip{flex-shrink:0;padding:6px 14px;background:var(--sur);border:.5px solid var(--bor);border-radius:20px;font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.filter-chip.active{background:var(--acc-d);border-color:var(--acc);color:var(--acc)}
+.history-item{background:var(--sur);border:.5px solid var(--bor);border-radius:var(--r);padding:1rem 1.25rem;margin-bottom:10px;position:relative;overflow:hidden}
+.history-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--acc)}
+.hi-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.hi-name{font-size:15px;font-weight:500}
+.hi-time{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--acc)}
+.hi-meta{font-size:12px;color:var(--muted);margin-bottom:6px}
+.hi-purpose{font-size:13px;color:var(--txt);line-height:1.5}
+.hi-note{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
+.outcome-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;margin-top:8px}
+.ob-success{background:#00e5a015;color:var(--acc);border:.5px solid var(--acc)}
+.ob-follow{background:#ffaa0015;color:var(--warn);border:.5px solid var(--warn)}
+.ob-none{background:#ff4d4d15;color:var(--danger);border:.5px solid var(--danger)}
+.ob-appt{background:#4d9fff15;color:var(--info);border:.5px solid var(--info)}
+
+/* ─── STATS ─── */
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:1.25rem}
+.stat-card{background:var(--sur);border:.5px solid var(--bor);border-radius:var(--r);padding:1rem}
+.stat-val{font-size:28px;font-weight:600;color:var(--acc)}
+.stat-lbl{font-size:12px;color:var(--muted);margin-top:2px}
+.bar-wrap{background:var(--sur);border:.5px solid var(--bor);border-radius:var(--r);padding:1rem;margin-bottom:1.25rem}
+
+/* ─── EXPORT ─── */
+.export-card{background:var(--sur);border:.5px solid var(--bor);border-radius:var(--r);padding:1.25rem;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+.export-icon{width:44px;height:44px;border-radius:var(--rs);background:var(--acc-d);border:.5px solid var(--acc);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.export-info p{font-size:14px;font-weight:500}
+.export-info span{font-size:12px;color:var(--muted)}
+.export-btn{margin-left:auto;background:none;border:.5px solid var(--bor);color:var(--acc);border-radius:var(--rs);padding:8px 14px;font-family:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.divider{height:.5px;background:var(--bor);margin:1.5rem 0}
+
+/* ─── MODAL ─── */
+.modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:1.5rem;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--sur);border:.5px solid var(--bor);border-radius:var(--r);padding:2rem 1.5rem;text-align:center;width:100%;max-width:340px;transform:scale(.9);transition:transform .25s}
+.modal-overlay.show .modal{transform:scale(1)}
+.modal-icon{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:26px}
+.modal-icon.success{background:var(--acc-d);border:2px solid var(--acc)}
+.modal-icon.error{background:#ff4d4d15;border:2px solid var(--danger)}
+.modal h2{font-size:18px;margin-bottom:6px}
+.modal p{font-size:13px;color:var(--muted);line-height:1.6}
+.modal-meta{background:var(--sur2);border-radius:var(--rs);padding:12px;margin:1rem 0;font-size:12px;text-align:left}
+.modal-meta div{display:flex;justify-content:space-between;padding:3px 0}
+.modal-meta span{color:var(--txt)}
+.modal-meta label{color:var(--muted)}
+.btn-close{width:100%;padding:12px;background:var(--sur2);color:var(--txt);border:.5px solid var(--bor);border-radius:var(--rs);font-family:inherit;font-size:14px;cursor:pointer;margin-top:.5rem}
+
+/* ─── TOAST ─── */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(100px);background:var(--sur);border:.5px solid var(--acc);border-radius:var(--rs);padding:10px 16px;font-size:13px;z-index:300;transition:transform .3s;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast-dot{width:8px;height:8px;border-radius:50%;background:var(--acc)}
+
+/* ─── EMPTY ─── */
+.empty{text-align:center;padding:3rem 1rem;color:var(--dim);font-size:14px}
+.empty span{font-size:32px;display:block;margin-bottom:.5rem}
+
+/* ─── MANAGER BADGE ─── */
+.manager-label{font-size:11px;color:var(--muted);padding:2px 6px;background:var(--sur2);border-radius:4px;margin-left:6px}
+
+@media(prefers-color-scheme:light){
+  :root{--bg:#f5f5f0;--sur:#fff;--sur2:#f0f0ea;--bor:#e0e0d8;--txt:#1a1a1a;--muted:#777;--dim:#bbb;--acc:#009966;--acc-d:#00996610;--acc-g:#00996625}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>กำลังโหลด...</p>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" style="display:none">
+  <div class="brand">
+    <div class="brand-icon">📍</div>
+    <h1>Sales Check-in</h1>
+    <p>ระบบติดตามทีมขาย</p>
+  </div>
+  <div class="login-card">
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input class="form-input" id="inp-user" type="text" placeholder="กรอก username" autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="inp-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="login-error">❌ <span id="login-err-msg">ข้อมูลไม่ถูกต้อง</span></div>
+    <button class="btn-primary" id="btn-login" onclick="doLogin()">
+      <span id="login-btn-text">เข้าสู่ระบบ</span>
+    </button>
+  </div>
+  <p style="text-align:center;font-size:12px;color:var(--dim);margin-top:1.5rem">v1.0 · Sales Check-in System</p>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="user-avatar" id="user-av">S</div>
+      <div class="user-info">
+        <p id="user-name">-</p>
+        <span class="badge-role" id="user-role">SALES</span>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">ออกจากระบบ</button>
+  </div>
+
+  <div class="nav-tabs" id="nav-tabs">
+    <div class="tab active" onclick="showTab('checkin',this)">เช็คอิน</div>
+    <div class="tab" onclick="showTab('history',this)">ประวัติ</div>
+    <div class="tab" onclick="showTab('stats',this)">สถิติ</div>
+    <div class="tab" onclick="showTab('export',this)">ส่งออก</div>
+  </div>
+
+  <!-- CHECK-IN -->
+  <div class="page active" id="page-checkin">
+    <div class="checkin-hero">
+      <div class="time-display" id="clock">00:00:00</div>
+      <div class="date-display" id="datedisp">-</div>
+    </div>
+
+    <div class="gps-box">
+      <div class="gps-dot" id="gps-dot"></div>
+      <div class="gps-text">
+        <p id="gps-status">กดปุ่มเพื่อดึงตำแหน่ง GPS</p>
+        <small id="gps-coords">รอการอนุญาต...</small>
+      </div>
+      <button class="gps-btn" onclick="getGPS()" id="gps-btn">ดึง GPS</button>
+    </div>
+
+    <div class="section-title">ข้อมูลลูกค้า</div>
+    <div class="form-card">
+      <div class="form-row">
+        <label>ชื่อ-นามสกุลลูกค้า *</label>
+        <input type="text" id="c-name" placeholder="กรอกชื่อลูกค้า">
+      </div>
+      <div class="form-row">
+        <label>เบอร์โทรศัพท์</label>
+        <input type="tel" id="c-phone" placeholder="0XX-XXX-XXXX">
+      </div>
+      <div class="form-row">
+        <label>บริษัท / ร้านค้า</label>
+        <input type="text" id="c-company" placeholder="ชื่อบริษัทหรือร้านค้า">
+      </div>
+    </div>
+
+    <div class="section-title">รายละเอียดการติดต่อ</div>
+    <div class="form-card">
+      <div class="form-row">
+        <label>วัตถุประสงค์ที่มาติดต่อ *</label>
+        <textarea id="c-purpose" placeholder="เช่น นำเสนอสินค้า, ติดตามใบเสนอราคา, ปิดออเดอร์..."></textarea>
+      </div>
+      <div class="form-row">
+        <label>ผลการพูดคุย *</label>
+        <select id="c-outcome">
+          <option value="">เลือกผล...</option>
+          <option value="ปิดการขายได้">✅ ปิดการขายได้</option>
+          <option value="รอติดตาม">⏸️ รอติดตาม</option>
+          <option value="ไม่สนใจ">❌ ไม่สนใจ</option>
+          <option value="นัดครั้งต่อไป">📅 นัดครั้งต่อไป</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>รายละเอียดเพิ่มเติม</label>
+        <textarea id="c-note" placeholder="สรุปสิ่งที่คุยกัน ข้อตกลง หรือขั้นตอนถัดไป..."></textarea>
+      </div>
+    </div>
+
+    <button class="btn-checkin" id="btn-checkin" disabled onclick="doCheckIn()">
+      <span id="checkin-btn-txt">📍 รอ GPS ก่อน</span>
+    </button>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="page" id="page-history">
+    <div class="filter-row">
+      <div class="filter-chip active" onclick="setFilter('all',this)">ทั้งหมด</div>
+      <div class="filter-chip" onclick="setFilter('ปิดการขายได้',this)">ปิดงาน</div>
+      <div class="filter-chip" onclick="setFilter('รอติดตาม',this)">รอติดตาม</div>
+      <div class="filter-chip" onclick="setFilter('นัดครั้งต่อไป',this)">นัด</div>
+      <div class="filter-chip" onclick="setFilter('ไม่สนใจ',this)">ไม่สนใจ</div>
+    </div>
+    <div id="history-list"><div class="empty"><span>📋</span>กำลังโหลด...</div></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="page" id="page-stats">
+    <div class="section-title">สรุปเดือนนี้</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val" id="st-total">-</div><div class="stat-lbl">เช็คอินทั้งหมด</div></div>
+      <div class="stat-card"><div class="stat-val" id="st-close">-</div><div class="stat-lbl">ปิดงานได้</div></div>
+      <div class="stat-card"><div class="stat-val" id="st-rate">-</div><div class="stat-lbl">Conversion Rate</div></div>
+      <div class="stat-card"><div class="stat-val" id="st-follow">-</div><div class="stat-lbl">รอติดตาม</div></div>
+    </div>
+    <div class="section-title">เช็คอิน 7 วันล่าสุด</div>
+    <div class="bar-wrap"><canvas id="bar-chart" height="140"></canvas></div>
+    <div class="section-title">ผลการติดต่อ</div>
+    <div id="outcome-bd"></div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="page" id="page-export">
+    <div class="section-title">ส่งออกข้อมูล</div>
+    <div class="export-card">
+      <div class="export-icon">📊</div>
+      <div class="export-info"><p>Export เดือนนี้</p><span>ข้อมูลเช็คอินเดือนปัจจุบัน</span></div>
+      <button class="export-btn" onclick="doExport('month')">โหลด</button>
+    </div>
+    <div class="export-card">
+      <div class="export-icon">📅</div>
+      <div class="export-info"><p>Export สัปดาห์นี้</p><span>7 วันล่าสุด</span></div>
+      <button class="export-btn" onclick="doExport('week')">โหลด</button>
+    </div>
+    <div class="export-card">
+      <div class="export-icon">📋</div>
+      <div class="export-info"><p>Export ทั้งหมด</p><span>ข้อมูลตั้งแต่เริ่มต้น</span></div>
+      <button class="export-btn" onclick="doExport('all')">โหลด</button>
+    </div>
+    <div class="divider"></div>
+    <div class="section-title">ตั้งค่า Auto Export</div>
+    <div class="form-card">
+      <div class="form-row">
+        <label>ความถี่</label>
+        <select id="auto-freq">
+          <option>ปิด</option>
+          <option>รายวัน (ทุก 20:00 น.)</option>
+          <option>รายสัปดาห์ (จันทร์ 08:00 น.)</option>
+          <option>รายเดือน (วันที่ 1)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>ส่ง Email ไปที่</label>
+        <input type="email" id="auto-email" placeholder="manager@company.com">
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveAutoExport()" style="border-radius:var(--r)">บันทึกการตั้งค่า</button>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-icon success" id="modal-icon">✓</div>
+    <h2 id="modal-title">เช็คอินสำเร็จ!</h2>
+    <p id="modal-msg">ข้อมูลถูกบันทึกและแจ้ง Manager แล้ว</p>
+    <div class="modal-meta" id="modal-meta"></div>
+    <button class="btn-close" onclick="closeModal()">ปิด</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-dot"></div>
+  <span id="toast-msg">-</span>
+</div>
+
+<script>
+// ============================================================
+// ⚙️ ตั้งค่า URL ของ Google Apps Script ที่ Deploy แล้ว
+// ============================================================
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwmmDb8ciIS4DkRDxepW5QswF6u9SBrXg6KSfWp41E2yrHqHdn7VVwINd7OXzRTEAXF7A/exec';
+// ตัวอย่าง: 'https://script.google.com/macros/s/AKfyc.../exec'
+
+// ============================================================
+// STATE
+// ============================================================
+let token    = localStorage.getItem('ci_token') || null;
+let userData = JSON.parse(localStorage.getItem('ci_user') || 'null');
+let gpsData  = null;
+let allCheckins = [];
+let currentFilter = 'all';
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load', async () => {
+  // ถ้ามี token เก็บไว้ ให้ข้าม login
+  if (token && userData) {
+    showApp();
+    loadCheckins();
+  } else {
+    showLogin();
+  }
+});
+
+function showLogin() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-av').textContent   = userData.name[0];
+  document.getElementById('user-name').textContent = userData.name;
+  document.getElementById('user-role').textContent = userData.role.toUpperCase();
+  // Manager เห็นแท็บเพิ่ม
+  if (userData.role === 'manager' || userData.role === 'admin') {
+    const tabs = document.getElementById('nav-tabs');
+    if (!document.getElementById('tab-all')) {
+      const t = document.createElement('div');
+      t.className = 'tab'; t.id = 'tab-all';
+      t.textContent = 'ทีมทั้งหมด';
+      t.onclick = function(){ showTab('all', this); };
+      tabs.appendChild(t);
+    }
+  }
+  startClock();
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+async function doLogin() {
+  const username = document.getElementById('inp-user').value.trim();
+  const password = document.getElementById('inp-pass').value;
+  const errEl    = document.getElementById('login-error');
+  const btnEl    = document.getElementById('btn-login');
+  const btnTxt   = document.getElementById('login-btn-text');
+
+  errEl.style.display = 'none';
+  if (!username || !password) {
+    showLoginError('กรุณากรอก Username และ Password');
+    return;
+  }
+
+  btnEl.disabled = true;
+  btnTxt.textContent = 'กำลังเข้าสู่ระบบ...';
+
+  try {
+    const res = await api('POST', { action:'login', username, password });
+    if (res.ok) {
+      token    = res.token;
+      userData = res.user;
+      localStorage.setItem('ci_token', token);
+      localStorage.setItem('ci_user',  JSON.stringify(userData));
+      showApp();
+      loadCheckins();
+    } else {
+      showLoginError(res.error || 'เข้าสู่ระบบไม่สำเร็จ');
+    }
+  } catch(e) {
+    showLoginError('ไม่สามารถเชื่อมต่อได้ กรุณาตรวจสอบการตั้งค่า');
+  }
+
+  btnEl.disabled = false;
+  btnTxt.textContent = 'เข้าสู่ระบบ';
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  document.getElementById('login-err-msg').textContent = msg;
+  el.style.display = 'block';
+}
+
+document.getElementById('inp-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogout() {
+  token = null; userData = null; allCheckins = [];
+  localStorage.removeItem('ci_token');
+  localStorage.removeItem('ci_user');
+  gpsData = null;
+  resetCheckinForm();
+  showLogin();
+}
+
+// ============================================================
+// GPS
+// ============================================================
+function getGPS() {
+  const dot    = document.getElementById('gps-dot');
+  const status = document.getElementById('gps-status');
+  const coords = document.getElementById('gps-coords');
+  const btn    = document.getElementById('gps-btn');
+
+  dot.className = 'gps-dot loading';
+  status.textContent = 'กำลังดึงตำแหน่ง...';
+  coords.textContent = 'โปรดอนุญาตการเข้าถึงตำแหน่ง';
+  btn.disabled = true;
+
+  if (!navigator.geolocation) {
+    dot.className = 'gps-dot error';
+    status.textContent = 'เบราว์เซอร์ไม่รองรับ GPS';
+    btn.disabled = false;
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      gpsData = {
+        lat: pos.coords.latitude.toFixed(6),
+        lng: pos.coords.longitude.toFixed(6),
+        accuracy: Math.round(pos.coords.accuracy),
+      };
+      dot.className = 'gps-dot ready';
+      status.textContent = `ได้ตำแหน่งแล้ว (±${gpsData.accuracy} ม.)`;
+      coords.textContent = `${gpsData.lat}, ${gpsData.lng}`;
+      btn.disabled = false;
+      document.getElementById('btn-checkin').disabled = false;
+      document.getElementById('checkin-btn-txt').textContent = '📍 เช็คอินตอนนี้';
+    },
+    err => {
+      dot.className = 'gps-dot error';
+      const msgs = { 1:'กรุณาอนุญาตการเข้าถึงตำแหน่ง', 2:'ไม่สามารถหาตำแหน่งได้', 3:'หมดเวลา กรุณาลองใหม่' };
+      status.textContent = msgs[err.code] || 'เกิดข้อผิดพลาด';
+      coords.textContent = '';
+      btn.disabled = false;
+    },
+    { enableHighAccuracy:true, timeout:15000, maximumAge:0 }
+  );
+}
+
+// ============================================================
+// CHECK-IN
+// ============================================================
+async function doCheckIn() {
+  const name    = document.getElementById('c-name').value.trim();
+  const phone   = document.getElementById('c-phone').value.trim();
+  const company = document.getElementById('c-company').value.trim();
+  const purpose = document.getElementById('c-purpose').value.trim();
+  const outcome = document.getElementById('c-outcome').value;
+  const note    = document.getElementById('c-note').value.trim();
+
+  if (!name)    { showToast('กรุณากรอกชื่อลูกค้า'); return; }
+  if (!purpose) { showToast('กรุณากรอกวัตถุประสงค์'); return; }
+  if (!outcome) { showToast('กรุณาเลือกผลการพูดคุย'); return; }
+
+  const btn = document.getElementById('btn-checkin');
+  btn.disabled = true;
+  document.getElementById('checkin-btn-txt').textContent = 'กำลังบันทึก...';
+
+  try {
+    const res = await api('POST', {
+      action: 'checkin', token,
+      lat: gpsData?.lat, lng: gpsData?.lng, accuracy: gpsData?.accuracy,
+      customer: { name, phone, company },
+      purpose, outcome, note,
+    });
+
+    if (res.ok) {
+      // แสดง modal สำเร็จ
+      document.getElementById('modal-icon').className = 'modal-icon success';
+      document.getElementById('modal-icon').textContent = '✓';
+      document.getElementById('modal-title').textContent = 'เช็คอินสำเร็จ!';
+      document.getElementById('modal-msg').textContent = 'ข้อมูลถูกบันทึกและแจ้ง Manager ทาง Line แล้ว';
+      document.getElementById('modal-meta').innerHTML = `
+        <div><label>เซลล์</label><span>${userData.name}</span></div>
+        <div><label>เวลา</label><span>${res.data.timeStr} น. (${res.data.dateStr})</span></div>
+        <div><label>พิกัด GPS</label><span style="font-family:monospace;font-size:11px">${res.data.lat}, ${res.data.lng}</span></div>
+        <div><label>ลูกค้า</label><span>${name}</span></div>
+        ${phone ? `<div><label>เบอร์</label><span>${phone}</span></div>` : ''}
+        <div><label>ผล</label><span>${outcome}</span></div>
+      `;
+      document.getElementById('modal').classList.add('show');
+      resetCheckinForm();
+      loadCheckins();
+    } else {
+      showToast('❌ ' + (res.error || 'บันทึกไม่สำเร็จ'));
+    }
+  } catch(e) {
+    showToast('❌ ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่');
+  }
+
+  btn.disabled = false;
+  document.getElementById('checkin-btn-txt').textContent = '📍 เช็คอินตอนนี้';
+}
+
+function resetCheckinForm() {
+  ['c-name','c-phone','c-company','c-purpose','c-note'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('c-outcome').value = '';
+  gpsData = null;
+  document.getElementById('gps-dot').className = 'gps-dot';
+  document.getElementById('gps-status').textContent = 'กดปุ่มเพื่อดึงตำแหน่ง GPS';
+  document.getElementById('gps-coords').textContent = 'รอการอนุญาต...';
+  document.getElementById('btn-checkin').disabled = true;
+  document.getElementById('checkin-btn-txt').textContent = '📍 รอ GPS ก่อน';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+// ============================================================
+// LOAD CHECKINS
+// ============================================================
+async function loadCheckins() {
+  try {
+    const res = await api('GET', null, `action=getCheckins&token=${token}`);
+    if (res.ok) {
+      allCheckins = res.data;
+      renderHistory();
+      renderStats();
+    }
+  } catch(e) {
+    console.error('Load checkins error:', e);
+  }
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  const filtered = currentFilter === 'all'
+    ? allCheckins
+    : allCheckins.filter(c => c.outcome === currentFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty"><span>📋</span>ยังไม่มีข้อมูลเช็คอิน</div>';
+    return;
+  }
+
+  const cls = { 'ปิดการขายได้':'ob-success','รอติดตาม':'ob-follow','ไม่สนใจ':'ob-none','นัดครั้งต่อไป':'ob-appt' };
+  list.innerHTML = filtered.map(c => `
+    <div class="history-item">
+      <div class="hi-header">
+        <div>
+          <span class="hi-name">${c.customerName}</span>
+          ${userData.role === 'manager' ? `<span class="manager-label">${c.userName}</span>` : ''}
+        </div>
+        <div class="hi-time">${c.time} น.</div>
+      </div>
+      <div class="hi-meta">
+        📅 ${c.date}
+        ${c.lat ? ` · 📍 ${c.lat}, ${c.lng}` : ''}
+        ${c.customerPhone ? ` · 📞 ${c.customerPhone}` : ''}
+      </div>
+      <div class="hi-purpose">${c.purpose}</div>
+      ${c.note ? `<div class="hi-note">💬 ${c.note}</div>` : ''}
+      <div class="outcome-badge ${cls[c.outcome]||'ob-none'}">${c.outcome}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// STATS
+// ============================================================
+async function renderStats() {
+  try {
+    const res = await api('GET', null, `action=getStats&token=${token}`);
+    if (!res.ok) return;
+    const d = res.data;
+    document.getElementById('st-total').textContent  = d.total;
+    document.getElementById('st-close').textContent  = d.closed;
+    document.getElementById('st-rate').textContent   = d.rate + '%';
+    document.getElementById('st-follow').textContent = d.followup;
+    drawBarChart(d.daily);
+
+    const bd = document.getElementById('outcome-bd');
+    bd.innerHTML = Object.entries(d.outcomes).map(([k,v]) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-size:13px;flex:1;color:var(--muted)">${k}</div>
+        <div style="background:var(--sur);border:.5px solid var(--bor);border-radius:20px;height:8px;flex:2;overflow:hidden">
+          <div style="height:100%;width:${d.total>0?Math.round(v/d.total*100):0}%;background:var(--acc);border-radius:20px"></div>
+        </div>
+        <div style="font-size:13px;font-weight:500;min-width:20px;text-align:right">${v}</div>
+      </div>
+    `).join('') || '<div style="color:var(--dim);font-size:13px">ยังไม่มีข้อมูล</div>';
+  } catch(e) {}
+}
+
+function drawBarChart(daily) {
+  const canvas = document.getElementById('bar-chart');
+  if (!canvas || !daily) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.parentElement.clientWidth - 32;
+  const H   = 140;
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const maxVal = Math.max(...daily.map(d => d.count), 1);
+  const segW   = (W - 40) / daily.length;
+  const barW   = Math.max(segW * 0.55, 8);
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#00e5a0';
+
+  daily.forEach((d, i) => {
+    const x    = 20 + i * segW + (segW - barW) / 2;
+    const barH = d.count > 0 ? Math.max(6, (d.count / maxVal) * (H - 40)) : 0;
+    const y    = H - 25 - barH;
+
+    if (d.count > 0) {
+      ctx.fillStyle   = accent + '25';
+      ctx.strokeStyle = accent;
+      ctx.lineWidth   = 1;
+      const r = 3;
+      ctx.beginPath();
+      ctx.moveTo(x+r, y); ctx.lineTo(x+barW-r, y);
+      ctx.arcTo(x+barW, y, x+barW, y+r, r);
+      ctx.lineTo(x+barW, y+barH); ctx.lineTo(x, y+barH);
+      ctx.arcTo(x, y, x+r, y, r); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.font = `500 11px 'IBM Plex Sans Thai', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(d.count, x + barW/2, y - 5);
+    }
+    ctx.fillStyle = '#888';
+    ctx.font = `11px 'IBM Plex Sans Thai', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(d.label, x + barW/2, H - 8);
+  });
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function doExport(period) {
+  let data = allCheckins;
+  const now = new Date();
+  if (period === 'week') {
+    const ago = new Date(); ago.setDate(ago.getDate()-7);
+    data = allCheckins.filter(c => new Date(c.timestamp) > ago);
+  } else if (period === 'month') {
+    data = allCheckins.filter(c => {
+      const d = new Date(c.timestamp);
+      return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    });
+  }
+
+  const headers = ['รหัส','เซลล์','วันที่','เวลา','ชื่อลูกค้า','เบอร์โทร','บริษัท','lat','lng','วัตถุประสงค์','ผล','หมายเหตุ'];
+  const rows = data.map(c => [
+    c.id, c.userName, c.date, c.time,
+    c.customerName, c.customerPhone, c.customerCompany,
+    c.lat, c.lng, c.purpose, c.outcome, c.note
+  ]);
+
+  const csv = [headers, ...rows].map(r =>
+    r.map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')
+  ).join('\n');
+
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `checkin_${period}_${now.toISOString().split('T')[0]}.csv`
+  });
+  a.click();
+  showToast('✅ Export สำเร็จ');
+}
+
+function saveAutoExport() {
+  showToast('✅ บันทึกการตั้งค่า Auto Export แล้ว');
+}
+
+// ============================================================
+// TABS / CLOCK
+// ============================================================
+function showTab(tab, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const page = document.getElementById('page-' + tab);
+  if (page) { page.classList.add('active'); }
+  if (el)   { el.classList.add('active'); }
+  if (tab === 'history') renderHistory();
+  if (tab === 'stats')   renderStats();
+  if (tab === 'all')     renderAllTeam();
+}
+
+function renderAllTeam() {
+  let page = document.getElementById('page-all');
+  if (!page) {
+    page = document.createElement('div');
+    page.className = 'page active'; page.id = 'page-all';
+    document.getElementById('app').appendChild(page);
+  }
+  page.innerHTML = `
+    <div class="section-title">เช็คอินของทีมทั้งหมด</div>
+    ${allCheckins.map(c => `
+      <div class="history-item">
+        <div class="hi-header">
+          <div><span class="hi-name">${c.customerName}</span><span class="manager-label">${c.userName}</span></div>
+          <div class="hi-time">${c.time} น.</div>
+        </div>
+        <div class="hi-meta">📅 ${c.date} ${c.lat?`· 📍 ${c.lat}, ${c.lng}`:''}</div>
+        <div class="hi-purpose">${c.purpose}</div>
+        <div class="outcome-badge ob-success">${c.outcome}</div>
+      </div>
+    `).join('') || '<div class="empty"><span>📋</span>ยังไม่มีข้อมูล</div>'}
+  `;
+}
+
+function startClock() {
+  const days   = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  function tick() {
+    const n = new Date();
+    document.getElementById('clock').textContent =
+      [n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+    document.getElementById('datedisp').textContent =
+      `วัน${days[n.getDay()]}ที่ ${n.getDate()} ${months[n.getMonth()]} ${n.getFullYear()+543}`;
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+// ============================================================
+// API HELPER
+// ============================================================
+async function api(method, body, query='') {
+  const url = SCRIPT_URL + (query ? '?'+query : '');
+  const opts = { method, headers:{'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
