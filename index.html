@@ -425,17 +425,43 @@ function getGPS() {
   },{enableHighAccuracy:true,timeout:15000});
 }
 
-function doCheckInNow() {
-  const now=new Date();
-  pendingCheckin={token,lat:gpsData?.lat||'',lng:gpsData?.lng||'',accuracy:gpsData?.accuracy||'',checkinTime:now.toISOString()};
-  const timeStr=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  document.getElementById('checkin-badge').style.display='block';
-  document.getElementById('checkin-time-display').textContent=`เวลา ${timeStr} น. · ${gpsData?.lat}, ${gpsData?.lng}`;
-  document.getElementById('section-step1').style.display='none';
-  document.getElementById('section-step2').style.display='block';
-  document.getElementById('step1').className='step done';
-  document.getElementById('step2').className='step active';
-  showToast('✅ เช็คอินแล้ว! กรุณากรอกข้อมูลลูกค้า');
+async function doCheckInNow() {
+  const btn = document.getElementById('btn-checkin-now');
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังบันทึก...';
+
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+
+  try {
+    const res = await jsonp({
+      action: 'checkin', token,
+      lat: gpsData?.lat||'', lng: gpsData?.lng||'',
+      accuracy: gpsData?.accuracy||'',
+      checkinTime: now.toISOString()
+    });
+
+    if (res.ok) {
+      // เก็บ id ไว้ใช้อัพเดททีหลัง
+      pendingCheckin = { id: res.data.id, token };
+      document.getElementById('checkin-badge').style.display='block';
+      document.getElementById('checkin-time-display').textContent=`✅ บันทึกแล้ว เวลา ${timeStr} น. · ${gpsData?.lat}, ${gpsData?.lng}`;
+      document.getElementById('section-step1').style.display='none';
+      document.getElementById('section-step2').style.display='block';
+      document.getElementById('step1').className='step done';
+      document.getElementById('step2').className='step active';
+      showToast('✅ เช็คอินแล้ว! กรุณากรอกข้อมูลลูกค้า');
+      loadCheckins();
+    } else {
+      showToast('❌ ' + (res.error||'บันทึกไม่สำเร็จ'));
+      btn.disabled = false;
+      btn.textContent = '📍 กดเช็คอินที่นี่เลย!';
+    }
+  } catch(e) {
+    showToast('❌ เกิดข้อผิดพลาด: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = '📍 กดเช็คอินที่นี่เลย!';
+  }
 }
 
 async function doSubmitInfo() {
@@ -452,9 +478,8 @@ async function doSubmitInfo() {
   document.getElementById('submit-btn-txt').textContent='กำลังบันทึก...';
 
   const params={
-    action:'checkin', token,
-    lat:pendingCheckin.lat, lng:pendingCheckin.lng, accuracy:pendingCheckin.accuracy,
-    checkinTime:pendingCheckin.checkinTime,
+    action:'updateInfo', token,
+    checkinId:pendingCheckin.id,
     customerName:name,
     customerPhone:document.getElementById('c-phone').value.trim(),
     customerCompany:document.getElementById('c-company').value.trim(),
