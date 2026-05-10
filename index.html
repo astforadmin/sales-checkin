@@ -491,9 +491,8 @@ async function doSubmitInfo() {
     if(res.ok){
       document.getElementById('modal-meta').innerHTML=`
         <div><label>เซลล์</label><span>${userData.name}</span></div>
-        <div><label>เวลาเช็คอิน</label><span>${res.data.timeStr} น.</span></div>
-        <div><label>พิกัด GPS</label><span style="font-size:0.9rem">${res.data.lat}, ${res.data.lng}</span></div>
         <div><label>ลูกค้า</label><span>${name}</span></div>
+        <div><label>วัตถุประสงค์</label><span>${purpose}</span></div>
         <div><label>ผล</label><span>${outcome}</span></div>
       `;
       document.getElementById('modal').classList.add('show');
